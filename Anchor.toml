@@ -1,0 +1,12 @@
+anchor_version = "0.19.0"
+solana_version = "1.8.9"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "devnet"
+wallet = "/Users/ddigiacomo/daovoting/daovoting.key"
+
+[programs.devnet]
+dao = "9UgyDew11rjMzcrWa8BMNQVkPSuU2Gv33YocZhfMQVu"
