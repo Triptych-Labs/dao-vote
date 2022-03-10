@@ -31,9 +31,9 @@ func Propose(daoIndex, ballotIndex uint64) {
 		SetBallotIndex(ballotIndex).
 		SetBump(ballotBump).
 		SetDaoAccount(daoPDA).
-		SetDescription("Some Description").
+		SetDescription("FUCK ANDREW GOWER").
 		SetEnd(uint64(time.Now().UTC().Unix()) + (5 * 60)).
-		SetName("Some Proposal Name").
+		SetName("I love RSC").
 		SetOracleAccount(oracle.PublicKey()).
 		SetSystemProgramAccount(solana.SystemProgramID)
 
@@ -57,3 +57,4 @@ func Propose(daoIndex, ballotIndex uint64) {
 
 	fmt.Println("Success")
 }
+

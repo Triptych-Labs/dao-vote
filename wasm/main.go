@@ -23,5 +23,9 @@ func main() {
 	defer certifyFunc.Release()
 	global.Set("certify", certifyFunc)
 
+	fetchProposalsFunc := js.FuncOf(integrations.FetchProposals)
+	defer fetchProposalsFunc.Release()
+	global.Set("fetchProposals", fetchProposalsFunc)
+
 	<-done
 }

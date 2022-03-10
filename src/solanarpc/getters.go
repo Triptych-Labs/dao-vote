@@ -1,6 +1,7 @@
 package solanarpc
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"github.com/gagliardetto/solana-go/rpc"
 	"triptychlabs.io/dao/v2/src/cluster"
 	"triptychlabs.io/dao/v2/src/generated/auth"
+	"triptychlabs.io/dao/v2/src/generated/dao"
 )
 
 type AccountMeta struct {
@@ -88,21 +90,18 @@ func FetchEnrollmentData(enrollment solana.PublicKey) (*auth.Enrollment, error) 
 	req, err := http.NewRequest(method, url, payload)
 
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	var resp struct {
@@ -110,7 +109,6 @@ func FetchEnrollmentData(enrollment solana.PublicKey) (*auth.Enrollment, error) 
 	}
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	var accountInfo rpc.GetAccountInfoResult
@@ -122,11 +120,9 @@ func FetchEnrollmentData(enrollment solana.PublicKey) (*auth.Enrollment, error) 
 		return b
 	}(resp.Result), &accountInfo)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	if accountInfo.Value == nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	decoder := ag_binary.NewBorshDecoder(accountInfo.Value.Data.GetBinary())
@@ -137,5 +133,90 @@ func FetchEnrollmentData(enrollment solana.PublicKey) (*auth.Enrollment, error) 
 	}
 
 	return &enrollmentData, nil
+
+}
+
+func FetchProposalsData(daoProgramId solana.PublicKey, disc string) (*[]dao.Ballot, error) {
+	url := cluster.RPCEndpoint
+	method := "POST"
+
+	payload := strings.NewReader(fmt.Sprintf(`{
+       "jsonrpc": "2.0",
+       "id": 1,
+       "method": "getProgramAccounts",
+       "params": [
+           "%s",
+           {
+               "encoding": "base64",
+               "filters": [
+                   {
+                       "dataSize": 128
+                   },
+                   {
+                       "memcmp": {
+                           "offset": 0,
+                           "bytes": "%s"
+                       }
+                   }
+               ]
+           }
+       ]
+    }`, daoProgramId, disc))
+
+	client := http.DefaultClient
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Result interface{} `json:"result"`
+	}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return nil, err
+	}
+	var accountsInfo genericAccount
+	err = json.Unmarshal(func(inp interface{}) []byte {
+		b, e := json.Marshal(inp)
+		if e != nil {
+			return []byte{}
+		}
+		return b
+	}(resp), &accountsInfo)
+	if err != nil {
+		return nil, err
+	}
+	proposals := make([]dao.Ballot, 0)
+	for _, accountInfo := range accountsInfo.Result {
+		b64, err := base64.StdEncoding.DecodeString(accountInfo.Account.Data[0])
+		if err != nil {
+			return nil, err
+		}
+		decoder := ag_binary.NewBorshDecoder(b64)
+		var proposal dao.Ballot
+		err = proposal.UnmarshalWithDecoder(decoder)
+		if err != nil {
+			return nil, err
+		}
+		proposals = append(
+			proposals,
+			proposal,
+		)
+	}
+
+	return &proposals, nil
 
 }

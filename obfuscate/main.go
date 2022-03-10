@@ -14,7 +14,7 @@ func main() {
 }
 
 func encrypt() {
-	text := []byte("9LS5eDSs36coxwkfhvUyWn7ejvVYnKAebsHTuLmky4aT")
+	text := []byte("euzBDdhcHR")
 	key := []byte("10kS4btkiHDeP6XKdhDUrVUqn8DJxp5R")
 
 	// generate a new aes cipher using our 32 byte long key
