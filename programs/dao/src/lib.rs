@@ -32,27 +32,29 @@ pub mod dao {
         Ok(())
     }
 
-    pub fn create_ballot(
+    pub fn create_proposal(
         ctx: Context<Propose>,
         _bump: u8,
         _ballot_index: u64,
         name: String,
         description: String,
+        end: u64,
     ) -> ProgramResult {
-        let dao_authority = &mut ctx.accounts.dao;
-        dao_authority.oracle = ctx.accounts.oracle.key();
-        dao_authority.name = name;
-        dao_authority.description = description;
+        let ballot = &mut ctx.accounts.ballot;
+        ballot.dao = ctx.accounts.dao.key();
+        ballot.name = name;
+        ballot.description = description;
+        ballot.end = end;
+        ballot.votes = 0;
 
         Ok(())
     }
 
-    pub fn holder_register(
-        ctx: Context<Register>,
-        _bump: u8,
-        holder: Pubkey,
-    ) -> ProgramResult {
-        require!(ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(), BadOracle);
+    pub fn holder_register(ctx: Context<Register>, _bump: u8, holder: Pubkey) -> ProgramResult {
+        require!(
+            ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(),
+            BadOracle
+        );
 
         let member = &mut ctx.accounts.member;
         member.holder = holder;
@@ -61,12 +63,11 @@ pub mod dao {
         Ok(())
     }
 
-    pub fn nft_enter(
-        ctx: Context<Enter>,
-        _bump: u8,
-        _mint: Pubkey,
-    ) -> ProgramResult {
-        require!(ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(), BadOracle);
+    pub fn nft_enter(ctx: Context<Enter>, _bump: u8, _mint: Pubkey) -> ProgramResult {
+        require!(
+            ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(),
+            BadOracle
+        );
         let nft = &mut ctx.accounts.nft;
         nft.member = ctx.accounts.member.key();
         nft.dao = ctx.accounts.dao.key();
@@ -74,12 +75,19 @@ pub mod dao {
         Ok(())
     }
 
-    pub fn nft_sync(
-        ctx: Context<Sync>,
-    ) -> ProgramResult {
-        require!(ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(), BadOracle);
-        require!(ctx.accounts.ballot.key() == ctx.accounts.nft.ballot.key(), BadNFTBallot);
-        require!(ctx.accounts.dao.key() == ctx.accounts.nft.dao.key(), BadNFTDAO);
+    pub fn nft_sync(ctx: Context<Sync>) -> ProgramResult {
+        require!(
+            ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(),
+            BadOracle
+        );
+        require!(
+            ctx.accounts.ballot.key() == ctx.accounts.nft.ballot.key(),
+            BadNFTBallot
+        );
+        require!(
+            ctx.accounts.dao.key() == ctx.accounts.nft.dao.key(),
+            BadNFTDAO
+        );
         let nft = &mut ctx.accounts.nft;
         nft.member = ctx.accounts.current_member.key();
         let previous_member = &mut ctx.accounts.previous_member;
@@ -88,12 +96,11 @@ pub mod dao {
         Ok(())
     }
 
-    pub fn holder_vote(
-        ctx: Context<Cast>,
-        _bump: u8,
-        votes: u64,
-    ) -> ProgramResult {
-        require!(ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(), BadOracle);
+    pub fn holder_vote(ctx: Context<Cast>, _bump: u8, votes: u64) -> ProgramResult {
+        require!(
+            ctx.accounts.oracle.key() == ctx.accounts.dao.oracle.key(),
+            BadOracle
+        );
         require!(ctx.accounts.dao.key() == ctx.accounts.dao.key(), BadDAO);
         let member = &mut ctx.accounts.member;
 
@@ -123,6 +130,29 @@ pub struct Create<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(bump: u8, ballot_index: u64)]
+/// In future, we can incorporate some smart_wallet philosophy into these proposals
+pub struct Propose<'info> {
+    pub oracle: Signer<'info>,
+    #[account(mut)]
+    pub dao: Account<'info, DAO>,
+    #[account(
+        init,
+        seeds = [
+            b"ballot".as_ref(),
+            dao.key().to_bytes().as_ref(),
+            oracle.key().to_bytes().as_ref(),
+            ballot_index.to_le_bytes().as_ref(),
+        ],
+        bump,
+        payer = oracle,
+        space = Ballot::space(),
+    )]
+    pub ballot: Account<'info, Ballot>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(bump: u8, holder: Pubkey)]
 pub struct Register<'info> {
     pub oracle: Signer<'info>,
@@ -138,27 +168,6 @@ pub struct Register<'info> {
         bump,
         payer = oracle,
         space = Member::space(),
-    )]
-    pub member: Account<'info, Member>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(bump: u8, ballot_index: u64)]
-pub struct Propose<'info> {
-    pub oracle: Signer<'info>,
-    #[account(mut)]
-    pub dao: Account<'info, DAO>,
-    #[account(
-        init,
-        seeds = [
-            b"ballot".as_ref(),
-            dao.key().to_bytes().as_ref(),
-            ballot_index.to_le_bytes().as_ref(),
-        ],
-        bump,
-        payer = oracle,
-        space = Ballot::space(),
     )]
     pub member: Account<'info, Member>,
     pub system_program: Program<'info, System>,
@@ -225,7 +234,6 @@ pub struct Cast<'info> {
     pub member: Account<'info, Member>,
     pub system_program: Program<'info, System>,
 }
-
 
 #[error]
 pub enum ErrorCode {

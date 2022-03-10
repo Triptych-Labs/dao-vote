@@ -30,6 +30,8 @@ func init() {
 var (
 	Instruction_CreateDao = ag_binary.TypeID([8]byte{88, 46, 92, 100, 95, 79, 229, 25})
 
+	Instruction_CreateProposal = ag_binary.TypeID([8]byte{132, 116, 68, 174, 216, 160, 198, 22})
+
 	Instruction_HolderRegister = ag_binary.TypeID([8]byte{126, 72, 46, 60, 120, 60, 204, 178})
 
 	Instruction_NftEnter = ag_binary.TypeID([8]byte{198, 158, 195, 5, 167, 140, 10, 23})
@@ -44,6 +46,8 @@ func InstructionIDToName(id ag_binary.TypeID) string {
 	switch id {
 	case Instruction_CreateDao:
 		return "CreateDao"
+	case Instruction_CreateProposal:
+		return "CreateProposal"
 	case Instruction_HolderRegister:
 		return "HolderRegister"
 	case Instruction_NftEnter:
@@ -74,6 +78,9 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 	[]ag_binary.VariantType{
 		{
 			"create_dao", (*CreateDao)(nil),
+		},
+		{
+			"create_proposal", (*CreateProposal)(nil),
 		},
 		{
 			"holder_register", (*HolderRegister)(nil),

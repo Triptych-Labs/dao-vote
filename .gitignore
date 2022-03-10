@@ -3,3 +3,5 @@ oracle.key
 vendor
 target
 anchor-go
+keys/
+build/

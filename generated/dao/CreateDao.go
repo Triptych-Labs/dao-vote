@@ -13,7 +13,7 @@ import (
 // CreateDao is the `createDao` instruction.
 type CreateDao struct {
 	Bump        *uint8
-	DaoIndex    *int64
+	DaoIndex    *uint64
 	Name        *string
 	Description *string
 
@@ -40,7 +40,7 @@ func (inst *CreateDao) SetBump(bump uint8) *CreateDao {
 }
 
 // SetDaoIndex sets the "daoIndex" parameter.
-func (inst *CreateDao) SetDaoIndex(daoIndex int64) *CreateDao {
+func (inst *CreateDao) SetDaoIndex(daoIndex uint64) *CreateDao {
 	inst.DaoIndex = &daoIndex
 	return inst
 }
@@ -216,7 +216,7 @@ func (obj *CreateDao) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err erro
 func NewCreateDaoInstruction(
 	// Parameters:
 	bump uint8,
-	daoIndex int64,
+	daoIndex uint64,
 	name string,
 	description string,
 	// Accounts:

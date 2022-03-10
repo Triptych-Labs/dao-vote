@@ -1,123 +1,82 @@
 package main
 
 import (
-	"context"
-	"encoding/binary"
+	"flag"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/rpc"
-	sendAndConfirmTransaction "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
-	"github.com/gagliardetto/solana-go/rpc/ws"
-	"triptychlabs.io/dao/v2/generated/dao"
+	"triptychlabs.io/dao/v2/src/authl2"
+	"triptychlabs.io/dao/v2/src/generated/dao"
+	"triptychlabs.io/dao/v2/src/keys"
+	"triptychlabs.io/dao/v2/src/triptychdao"
 )
+
+var Operation string
 
 func init() {
 	dao.SetProgramID(solana.MustPublicKeyFromBase58("E18jUpqrxp8w4u556G4CcE1jHW7iAvt7i6JH7SkGjaD8"))
+	// auth.SetProgramID(solana.MustPublicKeyFromBase58("9LS5eDSs36coxwkfhvUyWn7ejvVYnKAebsHTuLmky4aT"))
+	keys.SetupProviders()
 }
 
 func main() {
-	oracle, err := solana.PrivateKeyFromSolanaKeygenFile("./oracle.key")
-	if err != nil {
-		panic(err)
-	}
+	log.Println("Starting...")
+	oracle := keys.GetProvider(0)
 
-	daoPDA, daoBump, err := findDaoAddress(oracle.PublicKey(), 0)
-	if err != nil {
-		panic(err)
-	}
+	var daoIndex, ballotIndex int64
+	type funcOp func(solana.PrivateKey, uint64)
+	flag.StringVar(&Operation, "operation", "", "Operation")
+	flag.Int64Var(&daoIndex, "dao_id", -1, "dao_id")
+	flag.Int64Var(&ballotIndex, "ballot_id", -1, "ballot_id")
+	flag.Parse()
 
-	createDaoIx := dao.NewCreateDaoInstructionBuilder().
-		SetBump(daoBump).
-		SetDaoAccount(daoPDA).
-		SetDaoIndex(0).
-		SetDescription("asdfasd").
-		SetName("asd").
-		SetOracleAccount(oracle.PublicKey()).
-		SetSystemProgramAccount(solana.SystemProgramID)
-
-	ixs := make([]solana.Instruction, 0)
-	ixs = append(
-		ixs,
-		createDaoIx.Build(),
-	)
-	signers := make([]solana.PrivateKey, 0)
-	signers = append(
-		signers,
-		oracle,
-	)
-
-	sig, err := sendTransaction(
-		oracle,
-		ixs,
-		signers,
-	)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(sig)
-
-	fmt.Println("Success")
-}
-
-func sendTransaction(
-	feePayer solana.PrivateKey,
-	instructions []solana.Instruction,
-	signers []solana.PrivateKey,
-) (solana.Signature, error) {
-	client := rpc.New(rpc.DevNet_RPC)
-
-	recent, err := client.GetRecentBlockhash(context.TODO(), rpc.CommitmentFinalized)
-	if err != nil {
-		return solana.Signature{}, err
-	}
-
-	tx, err := solana.NewTransaction(
-		instructions,
-		recent.Value.Blockhash,
-		solana.TransactionPayer(feePayer.PublicKey()),
-	)
-	if err != nil {
-		return solana.Signature{}, err
-	}
-
-	_, err = tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
-		for _, candidate := range signers {
-			if candidate.PublicKey().Equals(key) {
-				return &candidate
-			}
+	funcs := make([]funcOp, 0)
+	switch Operation {
+	case "start_authl2":
+		funcs = append(
+			funcs,
+			SetupCloseHandler,
+			authl2.Subscribe,
+		)
+	case "create_dao":
+		if daoIndex == -1 {
+			panic("specify a dao_id")
 		}
-		return nil
-	})
-	if err != nil {
-		return solana.Signature{}, err
+		triptychdao.CreateDao(uint64(daoIndex))
+	case "create_proposal":
+		if daoIndex == -1 {
+			panic("specify a dao_id")
+		}
+		if ballotIndex == -1 {
+			panic("specify a ballot_id")
+		}
+		triptychdao.Propose(uint64(daoIndex), uint64(ballotIndex))
 	}
-	spew.Dump(tx)
 
-	wsClient, err := ws.Connect(context.Background(), rpc.DevNet_WS)
-	if err != nil {
-		return solana.Signature{}, err
+	var wg sync.WaitGroup
+	for _, f := range funcs {
+		wg.Add(1)
+		go func(f funcOp, wg *sync.WaitGroup) {
+			f(oracle, 0)
+			wg.Done()
+		}(f, &wg)
 	}
-
-	return sendAndConfirmTransaction.SendAndConfirmTransaction(
-		context.TODO(),
-		client,
-		wsClient,
-		tx,
-	)
+	wg.Wait()
+	fmt.Println("Done!!!")
 }
 
-func findDaoAddress(oracle solana.PublicKey, daoIndex uint64) (solana.PublicKey, uint8, error) {
-	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, daoIndex)
-	addr, bump, err := solana.FindProgramAddress(
-		[][]byte{
-			[]byte("dao"),
-			oracle.Bytes(),
-			buf,
-		},
-		dao.ProgramID,
-	)
-	return addr, bump, err
+func SetupCloseHandler(dontmindme solana.PrivateKey, dontintme uint64) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("!!!!!!!------------!!!!!!!")
+		fmt.Println("Use the --recover option in the next command to resume operations!!!")
+		os.Exit(0)
+	}()
 }

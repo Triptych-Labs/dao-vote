@@ -10,10 +10,7 @@ pub struct DAO {
 
 impl DAO {
     pub fn space() -> usize {
-        8
-            + 32
-            + 4 + 32
-            + 4 + 32
+        8 + 32 + 4 + 32 + 4 + 32
     }
 }
 
@@ -21,7 +18,7 @@ impl DAO {
 #[derive(Default, Debug, PartialEq)]
 pub struct Ballot {
     pub votes: i64,
-    pub end: i64,
+    pub end: u64,
     pub dao: Pubkey,
     pub name: String,
     pub description: String,
@@ -29,12 +26,7 @@ pub struct Ballot {
 
 impl Ballot {
     pub fn space() -> usize {
-        8
-            + 8
-            + 8
-            + 32
-            + 4 + 32
-            + 4 + 32
+        8 + 8 + 8 + 32 + 4 + 32 + 4 + 32
     }
 }
 
@@ -50,24 +42,17 @@ pub struct Member {
 
 impl Member {
     pub fn space() -> usize {
-        8
-            + 8
-            + 8
-            + 32
-            + 32
-            + 4 + 128
+        8 + 8 + 8 + 32 + 32 + 4 + 128
     }
 }
 
 #[account]
 #[derive(Default, Debug, PartialEq)]
-pub struct Casting {
-}
+pub struct Casting {}
 
 impl Casting {
     pub fn space() -> usize {
-        8
-            + 8
+        8 + 8
     }
 }
 
@@ -81,9 +66,6 @@ pub struct NFT {
 
 impl NFT {
     pub fn space() -> usize {
-        8
-            + 32
-            + 32
-            + 32
+        8 + 32 + 32 + 32
     }
 }

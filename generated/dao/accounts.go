@@ -74,7 +74,7 @@ func (obj *DAO) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
 
 type Ballot struct {
 	Votes       int64
-	End         int64
+	End         uint64
 	Dao         ag_solanago.PublicKey
 	Name        string
 	Description string

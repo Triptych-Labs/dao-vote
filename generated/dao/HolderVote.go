@@ -13,7 +13,7 @@ import (
 // HolderVote is the `holderVote` instruction.
 type HolderVote struct {
 	Bump  *uint8
-	Votes *int64
+	Votes *uint64
 
 	// [0] = [SIGNER] oracle
 	//
@@ -44,7 +44,7 @@ func (inst *HolderVote) SetBump(bump uint8) *HolderVote {
 }
 
 // SetVotes sets the "votes" parameter.
-func (inst *HolderVote) SetVotes(votes int64) *HolderVote {
+func (inst *HolderVote) SetVotes(votes uint64) *HolderVote {
 	inst.Votes = &votes
 	return inst
 }
@@ -225,7 +225,7 @@ func (obj *HolderVote) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err err
 func NewHolderVoteInstruction(
 	// Parameters:
 	bump uint8,
-	votes int64,
+	votes uint64,
 	// Accounts:
 	oracle ag_solanago.PublicKey,
 	ballot ag_solanago.PublicKey,
